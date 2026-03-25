@@ -3,105 +3,157 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Falsche Hitster</title>
+<title>Falsche Hitster – Blind</title>
 
 <style>
-body{
-  margin:0;
-  background:#0b0b0f;
-  color:#fff;
-  font-family:system-ui,Segoe UI,Roboto,Arial;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:100vh;
-}
-.card{
-  width:360px;
-  background:#12121a;
-  border-radius:16px;
-  padding:16px;
-}
-iframe{
-  width:100%;
-  height:152px;
-  border:none;
-  border-radius:12px;
+/* ====== BASIS ====== */
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #050507;
+  color: #ffffff;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
+.card {
+  width: 360px;
+  background: #0f0f14;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+
+/* ====== HEADER ====== */
+.code {
+  font-size: 12px;
+  opacity: .7;
+  margin-bottom: 10px;
+}
+
+h1 {
+  font-size: 18px;
+  margin: 0 0 12px 0;
+}
+
+/* ====== KNOPPEN ====== */
+.controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 14px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.play {
+  background: #22c55e;
+  color: #06210f;
+}
+
+.pause {
+  background: #1f2937;
+  color: #e5e7eb;
+}
+
+/* ====== BLIND PLAYER ====== */
 .blind {
   position: relative;
+  width: 100%;
+  height: 152px;
+  border-radius: 14px;
   overflow: hidden;
+  background: #000;
 }
 
-/* Spotify iframe blijft bestaan maar wordt onleesbaar */
+/* Spotify iframe zelf: totaal onleesbaar */
 .blind iframe {
-  filter: blur(25px) brightness(0.15);
-  transform: scale(1.2); /* voorkomt leesbare randen */
+  width: 100%;
+  height: 100%;
+  border: none;
+  filter: blur(40px) brightness(0.08);
+  transform: scale(1.4);
+  pointer-events: none;
 }
 
-/* Echte donkere blind overlay */
+/* Zwarte overlay met tekst */
 .blind::after {
-  content: "🎧 Blind mode actief";
+  content: "🚫 Je mag niet spieken";
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.92);
-  z-index: 5;
+  background: rgba(0,0,0,0.96);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   font-size: 16px;
   letter-spacing: .4px;
-  pointer-events: none; /* BELANGRIJK: laat knoppen werken */
-}
-
-}
-
-}
-.blind::after{
-  content:"Blind mode actief";
-  position:absolute;
-  inset:0;
-  background:rgba(0,0,0,.85);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  font-size:14px;
-  pointer-events:none;
-}
-.code{
-  font-size:12px;
-  opacity:.7;
-  margin-bottom:8px;
+  z-index: 5;
+  pointer-events: none;
 }
 </style>
 </head>
 
 <body>
-<div class="card">
-  <div class="code">Code: <span id="code"></span></div>
-  <div class="blind">
-    <iframe id="player"
-      allow="encrypted-media"
-      loading="lazy">
-    </iframe>
+  <div class="card">
+    <div class="code">Code: <span id="code">—</span></div>
+    <h1>Blind afspelen</h1>
+
+    <!-- ✅ PLAY / PAUSE -->
+    <div class="controls">
+      <button class="play" onclick="play()">▶ Play</button>
+      <button class="pause" onclick="pause()">⏸ Pause</button>
+    </div>
+
+    <!-- ✅ SPOTIFY (VOLLEDIG BLIND) -->
+    <div class="blind">
+      <iframe
+        id="player"
+        allow="encrypted-media"
+        loading="lazy">
+      </iframe>
+    </div>
   </div>
-</div>
 
 <script>
+/* ====== CODE LEZEN ====== */
 const params = new URLSearchParams(location.search);
-const t = params.get('t');
-document.getElementById('code').textContent = t || '—';
+const t = params.get("t");
+document.getElementById("code").textContent = t || "—";
 
-fetch('./tracks.json',{cache:'no-store'})
-  .then(r=>r.json())
-  .then(tracks=>{
-    const item = tracks[t];
-    if(!item) return;
-    const id = item.spotify_url.split('/track/')[1];
-    document.getElementById('player').src =
-      'https://open.spotify.com/embed/track/' + id;
+/* ====== TRACK LADEN ====== */
+let iframe = document.getElementById("player");
+
+fetch("./tracks.json", { cache: "no-store" })
+  .then(r => r.json())
+  .then(tracks => {
+    if (!t || !tracks[t]) return;
+    const trackId = tracks[t].spotify_url.split("/track/")[1];
+    iframe.src = "https://open.spotify.com/embed/track/" + trackId;
   });
+
+/* ====== PLAY / PAUSE (VIA POSTMESSAGE) ====== */
+function play() {
+  iframe.contentWindow.postMessage(
+    { command: "play" },
+    "https://open.spotify.com"
+  );
+}
+
+function pause() {
+  iframe.contentWindow.postMessage(
+    { command: "pause" },
+    "https://open.spotify.com"
+  );
+}
 </script>
 </body>
 </html>
