@@ -28,16 +28,33 @@ iframe{
   border:none;
   border-radius:12px;
 }
-.blind::after{
-  content:"Blind mode actief";
-  position:absolute;
-  inset:0;
-  background:rgba(0,0,0,.85);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  font-size:14px;
-  pointer-events:none;
+
+.blind {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Spotify iframe blijft bestaan maar wordt onleesbaar */
+.blind iframe {
+  filter: blur(25px) brightness(0.15);
+  transform: scale(1.2); /* voorkomt leesbare randen */
+}
+
+/* Echte donkere blind overlay */
+.blind::after {
+  content: "🎧 Blind mode actief";
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  letter-spacing: .4px;
+  pointer-events: none; /* BELANGRIJK: laat knoppen werken */
+}
+
 }
 
 }
