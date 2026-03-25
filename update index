@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Falsche Hitster – Blind Player</title>
+  <style>
+    :root{--bg:#0b0b0f;--card:#12121a;--fg:#f3f4f6;--muted:#a1a1aa;--accent:#22c55e;--danger:#ef4444;}
+    body{margin:0;background:radial-gradient(1200px 800px at 20% 0%, #163024, var(--bg));color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+    .wrap{width:min(820px, calc(100% - 32px));}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:22px;box-shadow:0 18px 45px rgba(0,0,0,.45);}
+    h1{font-size:18px;margin:0 0 6px 0;letter-spacing:.2px;}
+    p{margin:0;color:var(--muted);line-height:1.35;}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:14px;}
+    button,a.btn{appearance:none;border:none;border-radius:14px;padding:12px 16px;font-weight:700;cursor:pointer;display:inline-flex;gap:10px;align-items:center;text-decoration:none;}
+    button.primary{background:var(--accent);color:#06210f;}
+    button.secondary,a.btn.secondary{background:rgba(255,255,255,.10);color:var(--fg);}
+    button.secondary{border:1px solid rgba(255,255,255,.14)}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);color:var(--muted);font-size:12px;}
+    .status{margin-top:12px;font-size:14px;color:var(--muted);}
+
+    /* Embed area */
+    .embed-shell{position:relative;margin-top:16px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.35);}
+    #embed-iframe{width:100%;height:152px;} /* Spotify track embed height */
+
+    /* Blind overlay hides all Spotify UI (title/artist/cover). */
+    .blind-overlay{position:absolute;inset:0;background:linear-gradient(180deg, rgba(0,0,0,.85), rgba(0,0,0,.85));
+      display:flex;align-items:center;justify-content:center;pointer-events:auto;}
+    .blind-overlay .hint{font-size:13px;color:rgba(255,255,255,.72);text-align:center;padding:10px 14px;}
+
+    /* Keep controls visible; overlay blocks interaction with iframe */
+    .tiny{font-size:12px;color:var(--muted);margin-top:10px;}
+
+    .hidden{display:none;}
+    .error{color:#fecaca;}
+    code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:8px;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="pill">Code: <strong id="codeLabel">—</strong></div>
+      <h1>Blind player (Spotify Embed)</h1>
+      <p>Druk op <strong>Play</strong>. We verbergen titel/artist/cover, maar Spotify speelt het nummer af.</p>
+
+      <div class="row">
+        <button class="primary" id="playBtn">▶ Play</button>
+        <button class="secondary" id="pauseBtn">⏸ Pauze</button>
+        <a class="btn secondary" id="openSpotifyBtn" href="#" target="_blank" rel="noopener">Open in Spotify</a>
+      </div>
+
+      <div class="status" id="status">Laden…</div>
+
+      <div class="embed-shell">
+        <div id="embed-iframe"></div>
+        <div class="blind-overlay" id="blindOverlay">
+          <div class="hint">Blind mode is aan.<br/>Gebruik de knoppen hierboven om te spelen/pauseren.</div>
+        </div>
+      </div>
+
+      <div class="tiny">Tip: sommige browsers blokkeren afspelen tot je op Play tikt. Als Spotify niet start: tik nog eens op Play.</div>
+    </div>
+  </div>
+
+  <!-- Spotify iFrame API (official) -->
+  <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
+
+  <script>
+  (function(){
+    const statusEl = document.getElementById('status');
+    const codeEl = document.getElementById('codeLabel');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const openSpotifyBtn = document.getElementById('openSpotifyBtn');
+
+    const params = new URLSearchParams(location.search);
+    let t = params.get('t');
+    if(!t && location.hash){
+      const h = new URLSearchParams(location.hash.replace(/^#/, ''));
+      t = h.get('t');
+    }
+    t = (t||'').trim();
+    codeEl.textContent = t || '—';
+
+    function setStatus(msg, isError=false){
+      statusEl.textContent = msg;
+      statusEl.classList.toggle('error', !!isError);
+    }
+
+    if(!t){
+      setStatus('Geen code gevonden. Gebruik bijv. ?t=301', true);
+      playBtn.disabled = true; pauseBtn.disabled = true; openSpotifyBtn.classList.add('hidden');
+      return;
+    }
+
+    // Load mapping
+    let item = null;
+    fetch('./tracks.json', {cache:'no-store'})
+      .then(r => r.json())
+      .then(map => {
+        item = map[t];
+        if(!item || !item.spotify_url){
+          setStatus('Geen Spotify-link gevonden voor code ' + t + ' in tracks.json', true);
+          playBtn.disabled = true; pauseBtn.disabled = true; openSpotifyBtn.classList.add('hidden');
+          return;
+        }
+        openSpotifyBtn.href = item.spotify_url;
+        setStatus('Klaar. Druk op Play.');
+      })
+      .catch(() => {
+        setStatus('tracks.json kan niet geladen worden. Controleer of het bestand in dezelfde map staat.', true);
+        playBtn.disabled = true; pauseBtn.disabled = true;
+      });
+
+    // Extract track id from spotify_url
+    function toTrackUri(spotifyUrl){
+      const m = String(spotifyUrl).match(/\/track\/([A-Za-z0-9]+)/);
+      if(!m) return null;
+      return 'spotify:track:' + m[1];
+    }
+
+    let controller = null;
+
+    // Spotify iframe API callback
+    window.onSpotifyIframeApiReady = (IFrameAPI) => {
+      const element = document.getElementById('embed-iframe');
+
+      function ensureController(){
+        if(controller) return;
+        if(!item || !item.spotify_url) return;
+        const uri = toTrackUri(item.spotify_url);
+        if(!uri){
+          setStatus('Onverwachte Spotify-link. Kan track-id niet lezen.', true);
+          return;
+        }
+        const options = { uri: uri, theme: 0 };
+        IFrameAPI.createController(element, options, (EmbedController) => {
+          controller = EmbedController;
+        });
+      }
+
+      // small delay to allow tracks.json to load
+      const timer = setInterval(() => {
+        if(item && item.spotify_url){
+          ensureController();
+          clearInterval(timer);
+        }
+      }, 100);
+    };
+
+    playBtn.addEventListener('click', () => {
+      if(controller){
+        controller.play();
+        setStatus('Afspelen…');
+      } else {
+        setStatus('Spotify player is nog aan het laden… Probeer zo nog eens.', false);
+      }
+    });
+    pauseBtn.addEventListener('click', () => {
+      if(controller){
+        controller.pause();
+        setStatus('Gepauzeerd.');
+      }
+    });
+<!-- update -->
+
+  })();
+  </script>
+</body>
+</html>
