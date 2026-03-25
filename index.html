@@ -6,12 +6,12 @@
 <title>Falsche Hitster – Blind</title>
 
 <style>
-/* ====== BASIS ====== */
+/* ===== BASIS ===== */
 body {
   margin: 0;
   min-height: 100vh;
   background: #050507;
-  color: #ffffff;
+  color: #fff;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   display: flex;
   justify-content: center;
@@ -26,23 +26,23 @@ body {
   box-shadow: 0 20px 60px rgba(0,0,0,.6);
 }
 
-/* ====== HEADER ====== */
+/* ===== HEADER ===== */
 .code {
   font-size: 12px;
   opacity: .7;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 h1 {
   font-size: 18px;
-  margin: 0 0 12px 0;
+  margin: 0 0 14px 0;
 }
 
-/* ====== KNOPPEN ====== */
+/* ===== CONTROLS ===== */
 .controls {
   display: flex;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 button {
@@ -51,8 +51,8 @@ button {
   border-radius: 14px;
   border: none;
   font-weight: 700;
-  cursor: pointer;
   font-size: 15px;
+  cursor: pointer;
 }
 
 .play {
@@ -65,37 +65,35 @@ button {
   color: #e5e7eb;
 }
 
-}
-/* ====== BLIND PLAYER ====== */
-.blind {
+/* ===== PLAYER WRAPPER (BELANGRIJK) ===== */
+.player-wrapper {
   position: relative;
   width: 100%;
-  height: 152px;
+  height: 152px;           /* ✅ vaste hoogte */
   border-radius: 14px;
   overflow: hidden;
   background: #000;
 }
 
-/* Spotify iframe zelf: totaal onleesbaar */
-.blind iframe {
+/* Spotify iframe – totaal onleesbaar */
+.player-wrapper iframe {
   width: 100%;
   height: 100%;
   border: none;
   filter: blur(40px) brightness(0.08);
   transform: scale(1.4);
   pointer-events: none;
-
 }
 
-/* Zwarte overlay met tekst */
-.blind::after {
+/* Blind overlay – ALLEEN over de player */
+.player-wrapper::after {
   content: "🚫 Je mag niet spieken";
   position: absolute;
   inset: 0;
   background: rgba(0,0,0,0.96);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   font-size: 16px;
   letter-spacing: .4px;
   z-index: 5;
@@ -105,35 +103,35 @@ button {
 </head>
 
 <body>
-  <div class="card">
-    <div class="code">Code: <span id="code">—</span></div>
-    <h1>Blind afspelen</h1>
+<div class="card">
+  <div class="code">Code: <span id="code">—</span></div>
+  <h1>Blind afspelen</h1>
 
-    <!-- ✅ PLAY / PAUSE -->
-    <div class="controls">
-      <button class="play" onclick="play()">▶ Play</button>
-      <button class="pause" onclick="pause()">⏸ Pause</button>
-    </div>
-
-    <!-- ✅ SPOTIFY (VOLLEDIG BLIND) -->
-    <div class="blind">
-      <iframe
-        id="player"
-        allow="encrypted-media"
-        loading="lazy">
-      </iframe>
-    </div>
+  <!-- ✅ PLAY / PAUSE (NIET GEBLIND) -->
+  <div class="controls">
+    <button class="play" onclick="play()">▶ Play</button>
+    <button class="pause" onclick="pause()">⏸ Pause</button>
   </div>
 
+  <!-- ✅ ALLEEN DE PLAYER IS BLIND -->
+  <div class="player-wrapper">
+    <iframe
+      id="player"
+      allow="encrypted-media"
+      loading="lazy">
+    </iframe>
+  </div>
+</div>
+
 <script>
-/* ====== CODE LEZEN ====== */
+/* CODE LEZEN */
 const params = new URLSearchParams(location.search);
 const t = params.get("t");
 document.getElementById("code").textContent = t || "—";
 
-/* ====== TRACK LADEN ====== */
-let iframe = document.getElementById("player");
+const iframe = document.getElementById("player");
 
+/* TRACK LADEN */
 fetch("./tracks.json", { cache: "no-store" })
   .then(r => r.json())
   .then(tracks => {
@@ -142,7 +140,7 @@ fetch("./tracks.json", { cache: "no-store" })
     iframe.src = "https://open.spotify.com/embed/track/" + trackId;
   });
 
-/* ====== PLAY / PAUSE (VIA POSTMESSAGE) ====== */
+/* PLAY / PAUSE */
 function play() {
   iframe.contentWindow.postMessage(
     { command: "play" },
